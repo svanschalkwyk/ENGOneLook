@@ -22,41 +22,117 @@ type Keyword struct {
 }
 var keywords []Keyword
 const uri = "http://www.onelook.com/?ws1=1&posfilter=n&w=:"
+var stopwords = []string{"and", "or"}
+
+
+func splitKeywords(s string) []string  {
+	w := strings.FieldsFunc(s, func(r rune) bool {
+		switch r {
+		case '<', '>', ' ', '|', '&', '/', '\'', '(', ')','[',']',',',';',':':
+			return true
+		}
+		return false
+	})
+//	fmt.Printf("%q\n", w)
+	return w
+}
+
+func write_results() {
+	var row *xlsx.Row
+	var cell,cell1 *xlsx.Cell
+	excelFileName := "/home/steph/Downloads/ENSCIGHT/synononyms/ENG_Search_Label_Translations_1.xlsx"
+
+	excelFile := xlsx.NewFile()//.OpenFile(excelFileName)
+
+
+	sheet,_ := excelFile.AddSheet("Synonyms")
+	row = sheet.AddRow()
+	cell = row.AddCell()
+	cell.Value= "Term"
+	cell = row.AddCell()
+	cell.Value = "Synonyms_1"
+	cell = row.AddCell()
+	cell.Value = "Synonyms_2"
+	for _, kw := range keywords {
+		row1 := sheet.AddRow()
+		cell1 = row1.AddCell()
+		cell1.Value = kw.term;
+		for _, syns := range kw.synonyms {
+			cell2 := row1.AddCell()
+
+			for _, syn := range syns {
+				fmt.Println(syn)
+				cell2.Value = cell2.Value + "," +  syn
+			}
+
+		}
+	}
+	excelFile.Save(excelFileName)
+}
 
 func get_keywords() {
-	excelFileName := "/home/steph/Downloads/ENSCIGHT/synononyms/GER_Search_Label_Translations.xlsx"
+	excelFileName := "/home/steph/Downloads/ENSCIGHT/synononyms/ENG_Search_Label_Translations.xlsx"
 	excelFile, err := xlsx.OpenFile(excelFileName)
 	if err != nil {
 		return
 	}
 
 	sheet := excelFile.Sheets[0]
+	//m := make(map[string]string)
+	//kwa := make([]string,0)
 	for _, row := range sheet.Rows[1:] {
-		fullterm := string(row.Cells[0].Value)
+		fullterm := strings.TrimSpace(strings.ToLower(row.Cells[0].Value))
 		keyword := Keyword{term:fullterm}
-		keyword.subterms = append(keyword.subterms, fullterm)  // lookup entire term as well
-		kws := strings.Split(fullterm, " ")
-		for _, kw := range kws {
-			if len(kw) > 1 && strings.ToLower(kw) != "and" &&
-				strings.ToLower(kw) != "or" &&
-				strings.ToLower(kw) != "|" &&
-				strings.ToLower(kw) != "/" &&
-				strings.ToLower(kw) != "," {
-				keyword.subterms = append(keyword.subterms, kw)
+
+		kwt := splitKeywords(fullterm)
+		//for _,t := range kwt {
+		//	if _,found := m[t]; !found {
+		//		m[t] = fullterm
+		//		kwa = append(kwa,t)
+		//	}
+//			fmt.Println(t, m[t])
+		//}
 
 
-			}
-
+		if len(kwt) > 1 {
+			keyword.subterms = append(keyword.subterms, fullterm)
 		}
+
+
+		//kws := strings.Split(fullterm, " ")
+		//if len(kws) > 1 {
+		//	keyword.subterms = append(keyword.subterms, fullterm)  // lookup entire term as well
+		//}
+		//for _, kw := range kws {
+		//	if len(kw) > 1 && strings.ToLower(kw) != "and" &&
+		//		strings.ToLower(kw) != "or" &&
+		//		strings.ToLower(kw) != "|" &&
+		//		strings.ToLower(kw) != "/" &&
+		//		strings.ToLower(kw) != "," {
+		for _,kw := range kwt {
+			keyword.subterms = append(keyword.subterms, kw)
+		}
+fmt.Println(fullterm, keyword.subterms)
+
+//			}
+
+//		}
 		//fmt.Println(keyword.term, "-----", keyword.subterms, "------", len(keyword.subterms))
 		keywords = append(keywords, keyword)
 	}
-	fmt.Println(len(keywords))
+	//line := 0
+
+	//for _,k := range kwa {
+	//	line++
+	//	fmt.Println(line, k, m[k])
+	//}
+	//fmt.Println(len(keywords))
 }
 
 //var synonyms []string
 
 func main() {
+
 	get_keywords()
 
 	if len(keywords) > 0 {
@@ -106,13 +182,17 @@ func main() {
 						}
 					}
 				}
-				fmt.Println(synonyms)
+				//fmt.Println(synonyms)
 				terms.synonyms = append(terms.synonyms, synonyms) // add array to synonym array
-				for _, result := range keywords {
-					for _, synonym := range result.synonyms {
-						fmt.Println(result.term, synonym)
-					}
+				totalSynonyms := 0
+				//synmap := new(map[string])
+				for _, synonym := range terms.synonyms {
+
+					totalSynonyms += len(synonym)
+
 				}
+				fmt.Println(terms.term,terms.synonyms)
+			}
 			}
 
 			//
@@ -122,7 +202,6 @@ func main() {
 
 
 		}
-
+	write_results()
 	}
 
-}
